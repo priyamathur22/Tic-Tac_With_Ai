@@ -64,5 +64,12 @@ function aiMove() {
 
 function endGame() {
   gameActive = false;
+
+  const winner = checkWinner(board);
+  let result = "Draw";
+
+  if (winner === HUMAN) result = "Win";
+  else if (winner === AI) result = "Loss";
+
+  saveGameToHistory(playerName, result);
 }
-    return bestMove;
