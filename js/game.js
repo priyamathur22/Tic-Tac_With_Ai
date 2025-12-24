@@ -2,6 +2,7 @@ const boardElement = document.getElementById("board");
 const startBtn = document.getElementById("startGame");
 const playerInput = document.getElementById("playerName");
 const gameSection = document.getElementById("game-section");
+const newGameBtn = document.getElementById("newGame");
 
 let board = Array(9).fill("");
 let playerName = "Player";
@@ -13,6 +14,8 @@ startBtn.addEventListener("click", () => {
   gameSection.style.display = "block";
   resetBoard();
 });
+
+newGameBtn.addEventListener("click", resetBoard);
 
 function resetBoard() {
   board = Array(9).fill("");
@@ -36,6 +39,30 @@ function handlePlayerMove(e) {
   const index = e.target.dataset.index;
   if (board[index] !== "") return;
 
-  board[index] = "X";
-  e.target.textContent = "X";
+  board[index] = HUMAN;
+  e.target.textContent = HUMAN;
+
+  if (checkWinner(board) || isDraw(board)) {
+    endGame();
+    return;
+  }
+
+  aiMove();
 }
+
+function aiMove() {
+  const move = findBestMove(board);
+  if (move === -1) return;
+
+  board[move] = AI;
+  boardElement.children[move].textContent = AI;
+
+  if (checkWinner(board) || isDraw(board)) {
+    endGame();
+  }
+}
+
+function endGame() {
+  gameActive = false;
+}
+    return bestMove;
