@@ -1,112 +1,118 @@
 let board = Array(9).fill(null);
 let gameActive = false;
 let scores = { X: 0, O: 0 };
-let gameHistoryData = []; 
+let gameHistoryData = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Start Session
+    
+    // START SESSION: Initializes player and resets session data
     document.getElementById('startGame').onclick = () => {
-        const name = document.getElementById('playerName').value;
-        if (!name) return alert("Please enter your name!");
+        const nameInput = document.getElementById('playerName');
+        const nameValue = nameInput.value.trim();
+        if (!nameValue) return alert("Please enter your name!");
 
+        document.querySelector('.score-card:first-child .label').innerText = nameValue.toUpperCase() + " (X)";
+        
         scores = { X: 0, O: 0 };
         gameHistoryData = [];
         document.getElementById('pScore').innerText = '0';
         document.getElementById('aScore').innerText = '0';
         document.getElementById('historyList').innerHTML = '';
-        document.getElementById('treeContainer').innerHTML = "AI is waiting...";
-
         initGame();
     };
 
-    // 2. Cell Clicks
-    document.querySelectorAll('.cell').forEach(cell => {
-        cell.onclick = (e) => {
-            let idx = parseInt(e.target.dataset.index);
-            if (gameActive && board[idx] === null) {
-                userMove(idx);
-            }
-        };
-    });
-
-    // 3. Reset Button
-    document.getElementById('resetGame').onclick = initGame;
-
-    // 4. Clear History
+    // CLEAR HISTORY: Hard reset for the entire application
     document.getElementById('clearHistory').onclick = () => {
-        document.getElementById('historyList').innerHTML = '';
+        board = Array(9).fill(null);
+        gameActive = false;
+        scores = { X: 0, O: 0 };
         gameHistoryData = [];
-        initGame();
+        
+        const nameInput = document.getElementById('playerName');
+        nameInput.value = ""; 
+        document.querySelector('.score-card:first-child .label').innerText = "PLAYER (X)";
+        
+        document.getElementById('pScore').innerText = '0';
+        document.getElementById('aScore').innerText = '0';
+        document.getElementById('historyList').innerHTML = '';
+        document.getElementById('gameStatus').innerText = "Session Reset. Enter name.";
+        document.getElementById('treeContainer').innerText = "AI Offline.";
+        
+        clearBoardUI();
     };
 
-    // --- Modal Button Listeners ---
-
-    // CROSS BUTTON (X): Modal band + Board RESET
+    // MODAL HANDLERS: Controls for game result popup
     document.getElementById('modalCrossClose').onclick = () => {
         document.getElementById('resultModal').style.display = 'none';
-        initGame(); // Board reset ho jayega
+        initGame();
     };
-
-    // PLAY AGAIN: Modal band + Board RESET
     document.getElementById('modalPlayAgain').onclick = () => {
         document.getElementById('resultModal').style.display = 'none';
         initGame();
     };
-
-    // VIEW BOARD: Modal band + Board WAISA HI RAHEGA
     document.getElementById('modalViewBoard').onclick = () => {
         document.getElementById('resultModal').style.display = 'none';
-        gameActive = false; // Board lock rahega
+        gameActive = false;
         document.getElementById('gameStatus').innerText = "Viewing result. Click Reset to play again.";
     };
+    document.getElementById('modalExit').onclick = () => location.reload();
 
-    // EXIT SESSION: Reload Page
-    document.getElementById('modalExit').onclick = () => {
-        location.reload(); 
-    };
+    document.getElementById('resetGame').onclick = initGame;
+
+    // EVENT DELEGATION: Cell click listeners
+    document.querySelectorAll('.cell').forEach(cell => {
+        cell.onclick = (e) => {
+            let idx = parseInt(e.target.dataset.index);
+            if (gameActive && board[idx] === null) userMove(idx);
+        };
+    });
 });
 
+// GAME ENGINE: State management functions
 function initGame() {
     const name = document.getElementById('playerName').value || "Player";
     board = Array(9).fill(null);
     gameActive = true;
-    
     document.getElementById('gameStatus').innerText = `${name}'s Turn (X)`;
-    
+    clearBoardUI();
+    document.getElementById('resultModal').style.display = 'none';
+    document.getElementById('treeContainer').innerText = "AI Analyzing...";
+}
+
+function clearBoardUI() {
     document.querySelectorAll('.cell').forEach(c => {
         c.classList.remove('winning-cell', 'x-move', 'o-move');
         c.innerText = '';
     });
-    document.getElementById('resultModal').style.display = 'none';
 }
 
 function userMove(idx) {
     board[idx] = 'X';
-    updateUI();
+    updateUI(board);
     if (!checkGameOver()) {
-        gameActive = false; 
-        document.getElementById('gameStatus').innerText = "AI Mastermind is thinking...";
+        gameActive = false;
+        document.getElementById('gameStatus').innerText = "AI is thinking...";
         setTimeout(aiMove, 600);
     }
 }
 
 function aiMove() {
-    let move = findBestMove(board); 
+    let move = findBestMove(board);
     if (move !== -1) {
-        const name = document.getElementById('playerName').value || "Player";
         board[move] = 'O';
-        updateUI();
+        updateUI(board);
         renderLogs(currentDecisionTree);
         if (!checkGameOver()) {
             gameActive = true;
+            const name = document.getElementById('playerName').value || "Player";
             document.getElementById('gameStatus').innerText = `${name}'s Turn (X)`;
         }
     }
 }
 
-function updateUI(targetBoard = board) {
+function updateUI(currentBoard) {
     const cells = document.querySelectorAll('.cell');
-    targetBoard.forEach((val, i) => {
+    currentBoard.forEach((val, i) => {
         cells[i].innerText = val || '';
         cells[i].classList.remove('x-move', 'o-move');
         if (val === 'X') cells[i].classList.add('x-move');
@@ -114,10 +120,10 @@ function updateUI(targetBoard = board) {
     });
 }
 
+// WIN LOGIC: Checks for winner or draw and updates history
 function checkGameOver() {
     const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
     let winner = null;
-
     for (let c of wins) {
         if (board[c[0]] && board[c[0]] === board[c[1]] && board[c[0]] === board[c[2]]) {
             winner = board[c[0]];
@@ -125,10 +131,10 @@ function checkGameOver() {
             break;
         }
     }
-
     if (winner || !board.includes(null)) {
         gameActive = false;
-        let msg = winner === 'O' ? "AI Mastermind Wins!" : (winner === 'X' ? "You Won!" : "Strategic Draw!");
+        const name = document.getElementById('playerName').value || "Player";
+        let msg = winner === 'O' ? "Tic-Tac AI Wins!" : (winner === 'X' ? `${name} Won!` : "Strategic Draw!");
         
         if (winner === 'O') scores.O++;
         if (winner === 'X') scores.X++;
@@ -136,19 +142,15 @@ function checkGameOver() {
         document.getElementById('pScore').innerText = scores.X;
 
         const matchRecord = {
-            id: Date.now(),
             board: [...board],
-            logs: [...currentDecisionTree],
-            result: msg
+            result: msg,
+            logs: [...currentDecisionTree]
         };
         gameHistoryData.push(matchRecord);
         saveToHistoryUI(matchRecord);
 
-        document.getElementById('gameStatus').innerText = msg;
         setTimeout(() => {
             document.getElementById('modalWinner').innerText = msg;
-            const subText = document.getElementById('modalSubText');
-            if(subText) subText.innerText = ""; 
             document.getElementById('resultModal').style.display = 'flex';
         }, 500);
         return true;
@@ -156,23 +158,32 @@ function checkGameOver() {
     return false;
 }
 
+// UI HELPERS: History and AI Logs
 function saveToHistoryUI(match) {
-    const history = document.getElementById('historyList');
+    const historyList = document.getElementById('historyList');
     const item = document.createElement('div');
     item.className = 'history-item';
-    item.innerHTML = `<strong>Match:</strong> ${match.result}<br><small>Click to Replay</small>`;
+    item.style.cursor = 'pointer'; 
+    item.innerHTML = `<strong>${match.result}</strong><br><small>Click to view replay</small>`;
+    
     item.onclick = () => {
+        gameActive = false;
         updateUI(match.board);
         renderLogs(match.logs);
         document.getElementById('gameStatus').innerText = "REPLAY: " + match.result;
+        
+        document.querySelectorAll('.history-item').forEach(i => i.style.borderColor = 'rgba(255,255,255,0.1)');
+        item.style.borderColor = 'var(--accent-cyan)';
     };
-    history.prepend(item);
+    
+    historyList.prepend(item);
 }
 
-function renderLogs(treeData) {
+function renderLogs(logs) {
     let container = document.getElementById('treeContainer');
     container.innerHTML = '<strong>Analysis:</strong><br>';
-    treeData.forEach(l => {
-        container.innerHTML += `<div style="font-size:0.85rem; border-bottom:1px solid #334155; padding:2px 0;">Spot ${l.index}: Score ${l.score}</div>`;
+    if(logs.length === 0) container.innerHTML += "No logs for this turn.";
+    logs.forEach(l => { 
+        container.innerHTML += `<div style="font-size:0.85rem; border-bottom:1px solid #334155; padding:4px 0;">Spot ${l.index}: Score ${l.score}</div>`; 
     });
 }
